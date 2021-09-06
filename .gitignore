@@ -1,0 +1,8 @@
+*.DS_Store
+*.py[cod]
+**/__pycache__
+*.ipynb_checkpoints
+COL780-A1-Data
+COL780_Assignment_1.pdf
+untitled.py
+
