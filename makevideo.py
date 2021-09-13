@@ -2,7 +2,8 @@ import os
 import cv2
 import argparse
 import numpy as np
-import ipdb
+
+import ipdb # remove this line before final submission
 
 def parse_args():
     parser = argparse.ArgumentParser(description='make video using image and corresponding masks')

@@ -7,6 +7,7 @@ import cv2
 import argparse
 import numpy as np
 
+import ipdb # remove this line before final submission
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Get mIOU of video sequences')
@@ -23,9 +24,56 @@ def parse_args():
 
 
 def baseline_bgs(args):
-    #TODO complete this function
-    pass
+    # find out the evaluation frames (assuming they will be at the end of the video)
+    eval_frames = open(args.eval_frames).readlines()[0].split(' ')
+    eval_frame_start = int(eval_frames[0])-1
+    eval_frame_end = int(eval_frames[1])-1
 
+    # complete video sequence
+    filenames = os.listdir(args.inp_path)
+    filenames.sort()
+
+    # split the video sequence into train and dev set (as per eval frames given)
+    train_data = filenames[0 : eval_frame_start] 
+    dev_data = filenames[eval_frame_start : eval_frame_end]
+
+    # read all the training frames
+    imgs = []
+    for img_name in train_data:
+        img = cv2.imread(os.path.join(args.inp_path, img_name))
+        # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        imgs.append(img)
+    
+    # # approach (1) - take average of all train frames to find the reference image (background model)
+    # imgs = np.array(imgs)
+    # background_model = np.mean(imgs, axis = 0)
+    # background_model = cv2.convertScaleAbs(background_model)
+
+    # approach (2) - running average
+    background_model = np.float32(imgs[0])
+    for img in imgs[1:]:
+        cv2.accumulateWeighted(img, background_model, 0.02)
+    background_model = cv2.convertScaleAbs(background_model)
+
+    # check whether the path to write predictions over dev set exists or not
+    if not os.path.exists(args.out_path):
+        os.mkdir(args.out_path)
+
+    # predict foreground over dev frames
+    for img_name in dev_data:
+        img = cv2.imread(os.path.join(args.inp_path, img_name))
+        pred_mask = cv2.absdiff(background_model, img)
+
+        # for approach (2) - update the background model
+        # background_model = np.float32(background_model)
+        # cv2.accumulateWeighted(img, background_model, 0.02)
+        # background_model = cv2.convertScaleAbs(background_model)
+        # till here
+
+        pred_mask = cv2.cvtColor(pred_mask, cv2.COLOR_BGR2GRAY)
+        pred_mask = cv2.threshold(pred_mask, 50, 255, cv2.THRESH_BINARY)[1] # first returned value is True
+        pred_mask = cv2.GaussianBlur(pred_mask,(5,5),0)
+        cv2.imwrite(os.path.join(args.out_path, "gt" + img_name[2:-3] + "png"), pred_mask)
 
 def illumination_bgs(args):
     #TODO complete this function

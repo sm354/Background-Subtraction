@@ -3,6 +3,7 @@ import cv2
 import argparse
 import numpy as np
 
+import ipdb # remove this line before final submission
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Get mIOU of video sequences')
