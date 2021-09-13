@@ -10,6 +10,7 @@ def parse_args():
     parser.add_argument('--imgs_path', type=str)
     parser.add_argument('--masks_path', type=str)
     parser.add_argument('--video_path', type=str)
+    parser.add_argument('--eval_frames', type=str)
     args = parser.parse_args()
     return args
 
@@ -18,7 +19,12 @@ def makevideo(imgs_path, masks_path, video_path):
     filenames.sort()
     video_frames = []
 
-    for filename in filenames[470:]:
+    # find out the evaluation frames (assuming they will be at the end of the video)
+    eval_frames = open(args.eval_frames).readlines()[0].split(' ')
+    eval_frame_start = int(eval_frames[0])-1
+    eval_frame_end = int(eval_frames[1])-1
+
+    for filename in filenames[eval_frame_start : eval_frame_end]:
         # ipdb.set_trace()
         img =  cv2.imread(os.path.join(imgs_path, 'in'+filename[2:-3]+'jpg'))
         mask = cv2.imread(os.path.join(masks_path, filename))
