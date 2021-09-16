@@ -7,7 +7,8 @@ import cv2
 import argparse
 import numpy as np
 
-import ipdb # remove this line before final submission
+import ipdb #
+import subprocess # remove this line before final submission
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Get mIOU of video sequences')
@@ -22,12 +23,11 @@ def parse_args():
     args = parser.parse_args()
     return args
 
-
-def baseline_bgs(args):
+def train_dev_split(args):
     # find out the evaluation frames (assuming they will be at the end of the video)
     eval_frames = open(args.eval_frames).readlines()[0].split(' ')
     eval_frame_start = int(eval_frames[0])-1
-    eval_frame_end = int(eval_frames[1])-1
+    eval_frame_end = int(eval_frames[1])
 
     # complete video sequence
     filenames = os.listdir(args.inp_path)
@@ -37,23 +37,24 @@ def baseline_bgs(args):
     train_data = filenames[0 : eval_frame_start] 
     dev_data = filenames[eval_frame_start : eval_frame_end]
 
+    return train_data, dev_data
+
+def baseline_bgs(args):
+    train_data, dev_data = train_dev_split(args)
+
     # read all the training frames
     imgs = []
     for img_name in train_data:
-        img = cv2.imread(os.path.join(args.inp_path, img_name))
-        # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img = cv2.imread(os.path.join(args.inp_path, img_name)) # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         imgs.append(img)
-    
-    # # approach (1) - take average of all train frames to find the reference image (background model)
-    # imgs = np.array(imgs)
-    # background_model = np.mean(imgs, axis = 0)
+        
     # background_model = cv2.convertScaleAbs(background_model)
-
-    # approach (2) - running average
-    background_model = np.float32(imgs[0])
-    for img in imgs[1:]:
-        cv2.accumulateWeighted(img, background_model, 0.02)
-    background_model = cv2.convertScaleAbs(background_model)
+    # background_model = cv2.createBackgroundSubtractorMOG2()
+    # background_model = cv2.createBackgroundSubtractorKNN() 
+    background_model = cv2.bgsegm.createBackgroundSubtractorGSOC()
+    for img_name in train_data:
+        img = cv2.imread(os.path.join(args.inp_path, img_name))
+        _ = background_model.apply(img)
 
     # check whether the path to write predictions over dev set exists or not
     if not os.path.exists(args.out_path):
@@ -62,41 +63,39 @@ def baseline_bgs(args):
     # predict foreground over dev frames
     for img_name in dev_data:
         img = cv2.imread(os.path.join(args.inp_path, img_name))
-        pred_mask = cv2.absdiff(background_model, img)
+        # pred_mask = cv2.absdiff(background_model, img)
+        # pred_mask = cv2.cvtColor(pred_mask, cv2.COLOR_BGR2GRAY)
+        # pred_mask = cv2.threshold(pred_mask, 50, 255, cv2.THRESH_BINARY)[1] # first returned value is True
+        pred_mask = background_model.apply(img)
+        pred_img_name = "gt" + img_name[2:-3] + "png"
+        cv2.imwrite(os.path.join(args.out_path, pred_img_name), pred_mask)
 
-        # for approach (2) - update the background model
-        # background_model = np.float32(background_model)
-        # cv2.accumulateWeighted(img, background_model, 0.02)
-        # background_model = cv2.convertScaleAbs(background_model)
-        # till here
-
-        pred_mask = cv2.cvtColor(pred_mask, cv2.COLOR_BGR2GRAY)
-        pred_mask = cv2.threshold(pred_mask, 50, 255, cv2.THRESH_BINARY)[1] # first returned value is True
-        pred_mask = cv2.GaussianBlur(pred_mask,(5,5),0)
-        cv2.imwrite(os.path.join(args.out_path, "gt" + img_name[2:-3] + "png"), pred_mask)
+    # print(background_model)
+    # subprocess.call("python eval.py -p COL780-A1-Data/baseline/predictions -g COL780-A1-Data/baseline/groundtruth", shell=True)
 
 def illumination_bgs(args):
     #TODO complete this function
-    pass
+    baseline_bgs(args)
 
 
 def jitter_bgs(args):
     #TODO complete this function
-    pass
+    baseline_bgs(args)
 
 
 def dynamic_bgs(args):
     #TODO complete this function
-    pass
-
+    baseline_bgs(args)
 
 def ptz_bgs(args):
     #TODO: (Optional) complete this function
-    pass
+
+    # IMPORTANT - eval_frames.txt is not present in data but it is named as temporalROI.txt | for now I have stored a copy of it as eval_frames.txt
+    baseline_bgs(args)
 
 
 def main(args):
-    if args.category not in "bijdp":
+    if args.category not in "bijmp": # error in main.py -> earlier it was bijdp
         raise ValueError("category should be one of b/i/j/m/p - Found: %s"%args.category)
     FUNCTION_MAPPER = {
             "b": baseline_bgs,

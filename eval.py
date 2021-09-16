@@ -22,7 +22,8 @@ def binary_mask_iou(mask1, mask2):
     union = mask1_area+mask2_area-intersection
     if union == 0: 
         # only happens if both masks are background with all zero values
-        iou = 0
+        iou = 0, True
+        print("wrong masks are being evaluated")
     else:
         iou = intersection/union 
     return iou
@@ -36,7 +37,16 @@ def main(args):
     for filename in filenames:
         pred_mask = cv2.imread(os.path.join(args.pred_path, filename))
         gt_mask = cv2.imread(os.path.join(args.gt_path, filename))
+        try:
+            assert pred_mask.shape == gt_mask.shape
+        except:
+            print("masks either not read or are of different shapes")
         iou = binary_mask_iou(gt_mask, pred_mask)
+
+        if type(iou) == tuple:
+            print(filename)
+            iou = iou[0]
+
         ious.append(iou)
     print("mIOU: %.4f"%(sum(ious)/len(ious)))
     
