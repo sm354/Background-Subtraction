@@ -40,6 +40,7 @@ def main(args):
         try:
             assert pred_mask.shape == gt_mask.shape
         except:
+            # ipdb.set_trace()
             print("masks either not read or are of different shapes")
         iou = binary_mask_iou(gt_mask, pred_mask)
 
@@ -48,8 +49,16 @@ def main(args):
             iou = iou[0]
 
         ious.append(iou)
-    print("mIOU: %.4f"%(sum(ious)/len(ious)))
+
+    log_file = open('Results.txt',"a")
+    log_info = []
     
+    print("mIOU: %.4f"%(sum(ious)/len(ious)))
+
+    mIOU = sum(ious)/len(ious)
+
+    log_info.append(f"Score: {mIOU}\n")
+    log_file.writelines(log_info)
 
 if __name__ == "__main__":
     args = parse_args()
