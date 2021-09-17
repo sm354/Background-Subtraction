@@ -75,6 +75,15 @@ def baseline_bgs(args):
 
 def illumination_bgs(args):
     #TODO complete this function
+    # hard-coding for a bug fix : the masks are of different shape than the images
+    path = args.eval_frames[:args.eval_frames.find("eval_frames.txt")]
+    filenames = os.listdir(os.path.join(path, 'groundtruth'))
+    img = cv2.imread(os.path.join(path, 'input', 'in000001.jpg'))
+    # ipdb.set_trace()
+    for filename in filenames:
+        gt_mask = cv2.imread(os.path.join(path, 'groundtruth', filename))
+        gt_mask = cv2.resize(gt_mask, (img.shape[1], img.shape[0]))
+        cv2.imwrite(os.path.join(path, 'groundtruth', filename), gt_mask)
     baseline_bgs(args)
 
 
