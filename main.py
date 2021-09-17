@@ -39,6 +39,18 @@ def train_dev_split(args):
 
     return train_data, dev_data
 
+
+def ObtainForeground(img):
+    # th, im_th = cv2.threshold(img, 220, 255, cv2.THRESH_BINARY_INV);
+    im_floodfill = img.copy()
+    h, w = img.shape[:2]
+    mask = np.zeros((h+2, w+2), np.uint8)
+    cv2.floodFill(im_floodfill, mask, (0,0), 255);
+    im_floodfill_inv = cv2.bitwise_not(im_floodfill)
+    im_out = img | im_floodfill_inv
+    return im_out
+
+
 def baseline_bgs(args):
     train_data, dev_data = train_dev_split(args)
 
@@ -79,8 +91,8 @@ def baseline_bgs(args):
         pred_mask3 =  cv2.dilate(pred_mask2,kernel,iterations = 1)
         pred_mask4 = cv2.morphologyEx(pred_mask3, cv2.MORPH_OPEN, kernel)
         pred_mask = cv2.morphologyEx(pred_mask4, cv2.MORPH_CLOSE, kernel2)
-#APPLY MORPHOLOGY ON PRED MASK
-
+        
+        # pred_mask = ObtainForeground(pred_mask)
         pred_img_name = "gt" + img_name[2:-3] + "png"
         cv2.imwrite(os.path.join(args.out_path, pred_img_name), pred_mask)
 
@@ -96,7 +108,7 @@ def baseline_bgs(args):
     # print("VarThreshold: " , varThreshold )
     # print("Learning Rate: ", learningRate)
     # print(background_model)
-    subprocess.call("python .\\eval.py --pred_path COL780-A1-Data\\predictions --gt_path COL780-A1-Data\\baseline\\groundtruth", shell=True)
+    subprocess.call("python .\\eval.py --pred_path COL780-A1-Data\\moving_bg\\predictions --gt_path COL780-A1-Data\\moving_bg\\groundtruth", shell=True)
 
 def illumination_bgs(args):
     #TODO complete this function
