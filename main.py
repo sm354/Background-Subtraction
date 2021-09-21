@@ -7,7 +7,7 @@ import cv2
 import argparse
 import numpy as np
 
-import ipdb #
+import ipdb # remove this line before final submission
 import subprocess # remove this line before final submission
 
 def parse_args():
@@ -36,12 +36,30 @@ def train_dev_split(args):
     # split the video sequence into train and dev set (as per eval frames given)
     train_data = filenames[0 : eval_frame_start] 
     dev_data = filenames[eval_frame_start : eval_frame_end]
+    print("train frames names:", train_data[0], train_data[-1])
+    print("eval frames names:", dev_data[0], dev_data[-1])
 
     return train_data, dev_data
+
+def ObtainForeground(img):
+    # th, im_th = cv2.threshold(img, 220, 255, cv2.THRESH_BINARY_INV);
+    im_floodfill = img.copy()
+    h, w = img.shape[:2]
+    mask = np.zeros((h+2, w+2), np.uint8)
+    cv2.floodFill(im_floodfill, mask, (0,0), 255);
+    im_floodfill_inv = cv2.bitwise_not(im_floodfill)
+    im_out = img | im_floodfill_inv
+    return im_out
 
 def baseline_bgs(args):
     train_data, dev_data = train_dev_split(args)
 
+    #Hyperparams
+    history = 90
+    varThreshold = 250
+    learningRate = -1
+    kernel = np.ones((3,3),np.uint8)
+    kernel2 = np.ones((5,5),np.uint8)
     # read all the training frames
     imgs = []
     for img_name in train_data:
@@ -49,12 +67,13 @@ def baseline_bgs(args):
         imgs.append(img)
         
     # background_model = cv2.convertScaleAbs(background_model)
-    # background_model = cv2.createBackgroundSubtractorMOG2()
-    # background_model = cv2.createBackgroundSubtractorKNN() 
-    background_model = cv2.bgsegm.createBackgroundSubtractorGSOC()
+    # background_model = cv2.createBackgroundSubtractorMOG2(history = history, varThreshold = varThreshold )
+    # background_model = cv2.createBackgroundSubtractorGMG()
+    background_model = cv2.createBackgroundSubtractorKNN(history = history, dist2Threshold = varThreshold,detectShadows=False) 
+    # background_model = cv2.bgsegm.createBackgroundSubtractorGSOC()
     for img_name in train_data:
         img = cv2.imread(os.path.join(args.inp_path, img_name))
-        _ = background_model.apply(img)
+        _ = background_model.apply(img,learningRate=learningRate)
 
     # check whether the path to write predictions over dev set exists or not
     if not os.path.exists(args.out_path):
@@ -66,12 +85,29 @@ def baseline_bgs(args):
         # pred_mask = cv2.absdiff(background_model, img)
         # pred_mask = cv2.cvtColor(pred_mask, cv2.COLOR_BGR2GRAY)
         # pred_mask = cv2.threshold(pred_mask, 50, 255, cv2.THRESH_BINARY)[1] # first returned value is True
-        pred_mask = background_model.apply(img)
+        
+        pred_mask1 = background_model.apply(img)
+        pred_mask2 = cv2.erode(pred_mask1,kernel,iterations = 1)
+        pred_mask3 =  cv2.dilate(pred_mask2,kernel,iterations = 1)
+        pred_mask4 = cv2.morphologyEx(pred_mask3, cv2.MORPH_OPEN, kernel)
+        pred_mask = cv2.morphologyEx(pred_mask4, cv2.MORPH_CLOSE, kernel2)
+        
+        # pred_mask = ObtainForeground(pred_mask)
         pred_img_name = "gt" + img_name[2:-3] + "png"
         cv2.imwrite(os.path.join(args.out_path, pred_img_name), pred_mask)
 
+    # log_file = open('Results.txt',"a")
+    # log_info = []
+    # log_info.append(f"History: {history}\n")
+    # log_info.append(f"VarThreshold: {varThreshold}\n")
+    # log_info.append(f"Learning Rate: {learningRate}\n")
+    # log_file.writelines(log_info)
+    # print("Hyperparams: ")
+    # print("History: " , history )
+    # print("VarThreshold: " , varThreshold )
+    # print("Learning Rate: ", learningRate)
     # print(background_model)
-    # subprocess.call("python eval.py -p COL780-A1-Data/baseline/predictions -g COL780-A1-Data/baseline/groundtruth", shell=True)
+    # subprocess.call("python .\\eval.py --pred_path COL780-A1-Data\\moving_bg\\predictions --gt_path COL780-A1-Data\\moving_bg\\groundtruth", shell=True)
 
 def illumination_bgs(args):
     #TODO complete this function
@@ -93,8 +129,41 @@ def jitter_bgs(args):
 
 
 def dynamic_bgs(args):
-    #TODO complete this function
-    baseline_bgs(args)
+    train_data, dev_data = train_dev_split(args)
+
+    # read all the training frames
+    imgs = []
+    for img_name in train_data:
+        img = cv2.imread(os.path.join(args.inp_path, img_name)) # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        imgs.append(img)
+    imgs = np.array(imgs)
+    background_model = np.mean(imgs, axis = 0)
+    background_model = cv2.convertScaleAbs(background_model)
+
+    # check whether the path to write predictions over dev set exists or not
+    if not os.path.exists(args.out_path):
+        os.mkdir(args.out_path)
+
+    # predict foreground over dev frames
+    for img_name in dev_data:
+        img = cv2.imread(os.path.join(args.inp_path, img_name))
+
+        foreground = cv2.absdiff(background_model, img)
+        background_upd = cv2.absdiff(foreground, img)
+        background_model = np.float32(background_model)
+        cv2.accumulateWeighted(background_upd, background_model, 0.02)
+        # background_model = cv2.GaussianBlur(background_model,(5,5),0)
+        background_model = cv2.convertScaleAbs(background_model)        
+
+        pred_mask = cv2.cvtColor(foreground, cv2.COLOR_BGR2GRAY)
+        pred_mask = cv2.threshold(pred_mask, 50, 255, cv2.THRESH_BINARY)[1] # first returned value is True
+
+        pred_img_name = "gt" + img_name[2:-3] + "png"
+        cv2.imwrite(os.path.join(args.out_path, pred_img_name), pred_mask)
+
+
+
+
 
 def ptz_bgs(args):
     #TODO: (Optional) complete this function
