@@ -96,23 +96,68 @@ def baseline_bgs(args):
         pred_img_name = "gt" + img_name[2:-3] + "png"
         cv2.imwrite(os.path.join(args.out_path, pred_img_name), pred_mask)
 
-    
     log_file = open('Results.txt',"a")
     log_info = []
     log_info.append(f"History: {history}\n")
     log_info.append(f"VarThreshold: {varThreshold}\n")
     log_info.append(f"Learning Rate: {learningRate}\n")
     log_file.writelines(log_info)
-    # print("Hyperparams: ")
-    # print("History: " , history )
-    # print("VarThreshold: " , varThreshold )
-    # print("Learning Rate: ", learningRate)
-    # print(background_model)
+    
     subprocess.call("python .\\eval.py --pred_path COL780-A1-Data\\moving_bg\\predictions --gt_path COL780-A1-Data\\moving_bg\\groundtruth", shell=True)
 
 def illumination_bgs(args):
-    #TODO complete this function
-    baseline_bgs(args)
+    train_data, dev_data = train_dev_split(args)
+
+    #Hyperparams
+    history = 80
+    varThreshold = 300
+    learningRate = -1
+    kernel = np.ones((3,3),np.uint8)
+    kernel2 = np.ones((5,5),np.uint8)
+    # read all the training frames
+    imgs = []
+    for img_name in train_data:
+        img = cv2.imread(os.path.join(args.inp_path, img_name)) # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        
+        imgs.append(img)
+        
+    background_model = cv2.createBackgroundSubtractorMOG2(history = history, varThreshold = varThreshold )
+    # background_model = cv2.createBackgroundSubtractorKNN(history = history, dist2Threshold = varThreshold,detectShadows=False) 
+    
+    for img_name in train_data:
+        img = cv2.imread(os.path.join(args.inp_path, img_name))
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        blurred = cv2.GaussianBlur(gray, (3, 3), 0)
+        img = cv2.adaptiveThreshold(blurred, 255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 249, 5)
+
+        _ = background_model.apply(img,learningRate=learningRate)
+
+    # check whether the path to write predictions over dev set exists or not
+    if not os.path.exists(args.out_path):
+        os.mkdir(args.out_path)
+
+    # predict foreground over dev frames
+    for img_name in dev_data:
+        img = cv2.imread(os.path.join(args.inp_path, img_name))
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        blurred = cv2.GaussianBlur(gray, (3, 3), 0)
+        img = cv2.adaptiveThreshold(blurred, 255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 249, 5)
+        
+        pred_mask1 = background_model.apply(img)
+        pred_mask2 = cv2.erode(pred_mask1,kernel,iterations = 1)
+        pred_mask3 =  cv2.dilate(pred_mask2,kernel,iterations = 1)
+        pred_mask4 = cv2.morphologyEx(pred_mask3, cv2.MORPH_OPEN, kernel)
+        pred_mask = cv2.morphologyEx(pred_mask4, cv2.MORPH_CLOSE, kernel2)
+        
+        # pred_mask = ObtainForeground(pred_mask)
+        pred_img_name = "gt" + img_name[2:-3] + "png"
+        pred_mask = cv2.resize(pred_mask, (320, 240))
+        cv2.imwrite(os.path.join(args.out_path, pred_img_name), pred_mask)
+
+    
+    
+    subprocess.call("python Computer-Vision-A1\\eval.py --pred_path COL780-A1-Data\\illumination\\predictions --gt_path COL780-A1-Data\\illumination\\groundtruth", shell=True)
+
 
 
 def jitter_bgs(args):
