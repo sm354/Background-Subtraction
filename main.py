@@ -46,7 +46,7 @@ def ObtainForeground(img):
     im_floodfill = img.copy()
     h, w = img.shape[:2]
     mask = np.zeros((h+2, w+2), np.uint8)
-    cv2.floodFill(im_floodfill, mask, (0,0), 255);
+    cv2.floodFill(im_floodfill, mask, (0,0), 255)
     im_floodfill_inv = cv2.bitwise_not(im_floodfill)
     im_out = img | im_floodfill_inv
     return im_out
@@ -112,64 +112,58 @@ def baseline_bgs(args):
 def illumination_bgs(args):
     #TODO complete this function
     # hard-coding for a bug fix : the masks are of different shape than the images
-    path = args.eval_frames[:args.eval_frames.find("eval_frames.txt")]
-    filenames = os.listdir(os.path.join(path, 'groundtruth'))
-    img = cv2.imread(os.path.join(path, 'input', 'in000001.jpg'))
-    # ipdb.set_trace()
-    for filename in filenames:
-        gt_mask = cv2.imread(os.path.join(path, 'groundtruth', filename))
-        gt_mask = cv2.resize(gt_mask, (img.shape[1], img.shape[0]))
-        cv2.imwrite(os.path.join(path, 'groundtruth', filename), gt_mask)
-    baseline_bgs(args)
-
+    pass
 
 def jitter_bgs(args):
-    #TODO complete this function
-    baseline_bgs(args)
-
-
-def dynamic_bgs(args):
     train_data, dev_data = train_dev_split(args)
 
+    #Hyperparams
+    history = 250
+    varThreshold = 250
+    learningRate = -1
+    
     # read all the training frames
     imgs = []
     for img_name in train_data:
         img = cv2.imread(os.path.join(args.inp_path, img_name)) # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         imgs.append(img)
-    imgs = np.array(imgs)
-    background_model = np.mean(imgs, axis = 0)
-    background_model = cv2.convertScaleAbs(background_model)
+
+    # background_model = cv2.createBackgroundSubtractorMOG2(history = history, varThreshold = varThreshold )
+    background_model = cv2.createBackgroundSubtractorKNN(history = history, dist2Threshold = varThreshold,detectShadows=False) 
+    for img_name in train_data:
+        img = cv2.imread(os.path.join(args.inp_path, img_name))
+        _ = background_model.apply(img,learningRate=learningRate)
 
     # check whether the path to write predictions over dev set exists or not
     if not os.path.exists(args.out_path):
         os.mkdir(args.out_path)
 
+    # hyper_params
+    kernel = np.ones((3,3),np.uint8)
+    kernel2 = np.ones((5,5),np.uint8)
+
     # predict foreground over dev frames
     for img_name in dev_data:
         img = cv2.imread(os.path.join(args.inp_path, img_name))
-
-        foreground = cv2.absdiff(background_model, img)
-        background_upd = cv2.absdiff(foreground, img)
-        background_model = np.float32(background_model)
-        cv2.accumulateWeighted(background_upd, background_model, 0.02)
-        # background_model = cv2.GaussianBlur(background_model,(5,5),0)
-        background_model = cv2.convertScaleAbs(background_model)        
-
-        pred_mask = cv2.cvtColor(foreground, cv2.COLOR_BGR2GRAY)
-        pred_mask = cv2.threshold(pred_mask, 50, 255, cv2.THRESH_BINARY)[1] # first returned value is True
-
+        
+        pred_mask = background_model.apply(img)
+        pred_mask = cv2.erode(pred_mask, kernel)
+        # pred_mask =  cv2.dilate(pred_mask,kernel,iterations = 1)
+        pred_mask = cv2.morphologyEx(pred_mask, cv2.MORPH_OPEN, kernel)
+        pred_mask = cv2.morphologyEx(pred_mask, cv2.MORPH_CLOSE, kernel2)
+        
+        # pred_mask = ObtainForeground(pred_mask)
         pred_img_name = "gt" + img_name[2:-3] + "png"
         cv2.imwrite(os.path.join(args.out_path, pred_img_name), pred_mask)
 
-
-
-
+def dynamic_bgs(args):
+    pass
 
 def ptz_bgs(args):
     #TODO: (Optional) complete this function
 
     # IMPORTANT - eval_frames.txt is not present in data but it is named as temporalROI.txt | for now I have stored a copy of it as eval_frames.txt
-    baseline_bgs(args)
+    pass
 
 
 def main(args):
