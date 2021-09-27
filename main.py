@@ -207,7 +207,7 @@ def dynamic_bgs(args):
         cv2.imwrite(os.path.join(args.out_path, pred_img_name), pred_mask)
 
 def ptz_bgs(args):
-    # IMPORTANT - eval_frames.txt is not present in data but it is named as temporalROI.txt | for now I have stored a copy of it as eval_frames.txt
+    # IMPORTANT - eval_frames.txt is not present in data but it is named as temporalROI.txt | This is handled by giving correct path in the arguments
     train_data, dev_data = train_dev_split(args)
 
     #Hyperparams
@@ -216,15 +216,13 @@ def ptz_bgs(args):
     learningRate = -1
     kernel = np.ones((3,3),np.uint8)
     kernel2 = np.ones((5,5),np.uint8)
+    
     # read all the training frames
     imgs = []
+    background_model = cv2.createBackgroundSubtractorKNN(history = history, dist2Threshold = varThreshold,detectShadows=False) 
     for img_name in train_data:
         img = cv2.imread(os.path.join(args.inp_path, img_name)) # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         imgs.append(img)
-        
-    background_model = cv2.createBackgroundSubtractorKNN(history = history, dist2Threshold = varThreshold,detectShadows=False) 
-    for img_name in train_data:
-        img = cv2.imread(os.path.join(args.inp_path, img_name))
         _ = background_model.apply(img,learningRate=learningRate)
 
     # check whether the path to write predictions over dev set exists or not
@@ -234,11 +232,12 @@ def ptz_bgs(args):
     # predict foreground over dev frames
     for img_name in dev_data:
         img = cv2.imread(os.path.join(args.inp_path, img_name))
-        pred_mask1 = background_model.apply(img)
-        pred_mask2 = cv2.erode(pred_mask1,kernel,iterations = 1)
-        pred_mask3 =  cv2.dilate(pred_mask2,kernel,iterations = 1)
-        pred_mask4 = cv2.morphologyEx(pred_mask3, cv2.MORPH_OPEN, kernel)
-        pred_mask = cv2.morphologyEx(pred_mask4, cv2.MORPH_CLOSE, kernel2)
+        
+        pred_mask = background_model.apply(img)
+        pred_mask = cv2.morphologyEx(pred_mask, cv2.MORPH_OPEN, kernel)
+        pred_mask = cv2.morphologyEx(pred_mask, cv2.MORPH_CLOSE, kernel2)
+        pred_mask = cv2.medianBlur(pred_mask, 7)
+
         pred_img_name = "gt" + img_name[2:-3] + "png"
         cv2.imwrite(os.path.join(args.out_path, pred_img_name), pred_mask)
 
