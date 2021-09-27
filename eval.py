@@ -45,9 +45,10 @@ def main(args):
         iou = binary_mask_iou(gt_mask, pred_mask)
 
         if type(iou) == tuple:
-            print(filename)
-            iou = iou[0]
-
+            # print(filename)
+            # iou = iou[0]
+            # pass
+            continue
         ious.append(iou)
 
     log_file = open('Results.txt',"a")

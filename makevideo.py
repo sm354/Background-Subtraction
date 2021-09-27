@@ -12,6 +12,7 @@ def parse_args():
     parser.add_argument('--masks_path', type=str)
     parser.add_argument('--video_path', type=str)
     parser.add_argument('--eval_frames', type=str)
+    parser.add_argument('--original_video', action='store_true')
     args = parser.parse_args()
     return args
 
@@ -39,11 +40,11 @@ def makevideo(imgs_path, masks_path, video_path):
         mask = mask / 255.
         mask = mask + ((mask == 0.) * 0.1)
 
-        video_frame = img * mask
+        video_frame = img if args.original_video else img * mask
         video_frame = cv2.convertScaleAbs(video_frame)
         video_frames.append(video_frame)
 
-    video_output = cv2.VideoWriter(video_path + ".mp4", cv2.VideoWriter_fourcc(*'DIVX'), 15, size)
+    video_output = cv2.VideoWriter(video_path + ".mp4", cv2.VideoWriter_fourcc(*'DIVX'), 30, size)
     for video_frame in video_frames:
         video_output.write(video_frame)
     video_output.release()
