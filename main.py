@@ -76,23 +76,28 @@ def baseline_bgs(args):
         pred_img_name = "gt" + img_name[2:-3] + "png"
         cv2.imwrite(os.path.join(args.out_path, pred_img_name), pred_mask)
 
-def hisEqulColor(img):
-    img_yuv = cv2.cvtColor(img, cv2.COLOR_BGR2YCR_CB)
+def histogram_equalization(img):
+    # Perform Histogram Equalization to counter illumination change problem
+    # convert the color scheme to YCrCb which separate the intensity/brightness information of image separately unlike rgb
+    img_ycrcb = cv2.cvtColor(img, cv2.COLOR_BGR2YCR_CB)
+    
+    # perform histogram equalization on the Y-channel of this image
+    # for this, we use CLAGE's algorithm (that performs piecewise histogram equalization)
     clahe = cv2.createCLAHE(clipLimit=1.0, tileGridSize=(2,2))
-    img_yuv[:,:,0] = clahe.apply(img_yuv[:,:,0])
-    img = cv2.cvtColor(img_yuv, cv2.COLOR_YCR_CB2BGR)
-    rgb_planes = cv2.split(img)
-    result_planes = []
-    result_norm_planes = []
-    for plane in rgb_planes:
-        dilated_img = cv2.dilate(plane, np.ones((3,3), np.uint8))
-        bg_img = cv2.medianBlur(dilated_img, 25)
-        diff_img = 255 - cv2.absdiff(plane, bg_img)
-        norm_img = cv2.normalize(diff_img,None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8UC1)
-        result_planes.append(diff_img)
-        result_norm_planes.append(norm_img)
-    result_norm = cv2.merge(result_norm_planes)
-    return result_norm
+    img_ycrcb[:,:,0] = clahe.apply(img_ycrcb[:,:,0])
+    
+    # convert back to bgr
+    img = cv2.cvtColor(img_ycrcb, cv2.COLOR_YCR_CB2BGR)
+    return img
+
+def adaptive_thresholding(img):
+    channels = []
+    for channel in cv2.split(img):
+        channel_bg = cv2.medianBlur(cv2.dilate(channel, np.ones((3,3))), 25)
+        channel_edges = cv2.absdiff(channel, channel_bg)
+        channel_edges = cv2.normalize(channel_edges, dst = None, norm_type = cv2.NORM_MINMAX, alpha = 0, beta = 255)
+        channels.append(channel_edges)
+    return cv2.merge(channels)
 
 def illumination_bgs(args):
     train_data, dev_data = train_dev_split(args)
@@ -111,7 +116,8 @@ def illumination_bgs(args):
         img = cv2.imread(os.path.join(args.inp_path, img_name)) 
         imgs.append(img)
 
-        img = hisEqulColor(img)
+        img = histogram_equalization(img)
+        img = adaptive_thresholding(img)
         _ = background_model.apply(img, learningRate=learningRate)
     
     if not os.path.exists(args.out_path):
@@ -120,7 +126,8 @@ def illumination_bgs(args):
     # predict foreground over dev frames
     for img_name in dev_data:
         img = cv2.imread(os.path.join(args.inp_path, img_name))
-        img = hisEqulColor(img)
+        img = histogram_equalization(img)
+        img = adaptive_thresholding(img)
         
         pred_mask = background_model.apply(img)
         pred_mask = cv2.morphologyEx(pred_mask, cv2.MORPH_OPEN, kernel)
