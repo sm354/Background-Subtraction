@@ -169,22 +169,25 @@ def jitter_bgs(args):
 
 def dynamic_bgs(args):
     train_data, dev_data = train_dev_split(args)
+
+    # hyper params
     history = 250
     varThreshold = 250
     learningRate = -1
-    imgs = []
-    for img_name in train_data:
-        img = cv2.imread(os.path.join(args.inp_path, img_name)) 
-        imgs.append(img)
-    background_model = cv2.createBackgroundSubtractorKNN(history = history, dist2Threshold = varThreshold,detectShadows=False) 
-    for img_name in train_data:
-        img = cv2.imread(os.path.join(args.inp_path, img_name))
-        _ = background_model.apply(img,learningRate=learningRate)
-    if not os.path.exists(args.out_path):
-        os.mkdir(args.out_path)
     kernel = np.ones((3,3),np.uint8)
     kernel2 = np.ones((5,5),np.uint8)
 
+    # read the training frames
+    imgs = []
+    background_model = cv2.createBackgroundSubtractorKNN(history = history, dist2Threshold = varThreshold,detectShadows=False) 
+    for img_name in train_data:
+        img = cv2.imread(os.path.join(args.inp_path, img_name)) 
+        imgs.append(img)
+        _ = background_model.apply(img,learningRate=learningRate)
+    
+    if not os.path.exists(args.out_path):
+        os.mkdir(args.out_path)
+        
     # predict foreground over dev frames
     for img_name in dev_data:
         img = cv2.imread(os.path.join(args.inp_path, img_name))
@@ -197,6 +200,7 @@ def dynamic_bgs(args):
 
         pred_mask = cv2.morphologyEx(pred_mask, cv2.MORPH_OPEN, kernel)
         pred_mask = cv2.morphologyEx(pred_mask, cv2.MORPH_CLOSE, kernel2)
+        pred_mask = cv2.medianBlur(pred_mask, 7)
         
         # pred_mask = ObtainForeground(pred_mask)
         pred_img_name = "gt" + img_name[2:-3] + "png"
