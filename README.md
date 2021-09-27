@@ -4,25 +4,15 @@ Various background subtraction models are designed using classical computer visi
 
 ## Different Scene Categories
 
+We build system for static, illumination, jitter, moving, and pan-tilt-zoom scene categories. 
+
 ### Static Background
 
-<video src="/Users/shubhammittal/Desktop/A1_CV/Computer-Vision-A1/videos/baseline.mp4"></video>
 
-### Changing Illumination
-
-<video src="/Users/shubhammittal/Desktop/A1_CV/Computer-Vision-A1/videos/illumination.mp4"></video>
-
-### Jitter
-
-<video src="/Users/shubhammittal/Desktop/A1_CV/Computer-Vision-A1/videos/jitter.mp4"></video>
 
 ### Moving Background
 
-<video src="/Users/shubhammittal/Desktop/A1_CV/Computer-Vision-A1/videos/moving_bg.mp4"></video>
-
-### Pan-tilt-zoom 
-
-<video src="/Users/shubhammittal/Desktop/A1_CV/Computer-Vision-A1/videos/ptz.mp4"></video>
+![moving background](/Users/shubhammittal/Desktop/moving_bg.gif)
 
 ## Running Mode
 
