@@ -77,7 +77,6 @@ def baseline_bgs(args):
         cv2.imwrite(os.path.join(args.out_path, pred_img_name), pred_mask)
 
 def hisEqulColor(img):
-    #THIS WORKS WONDERS BEST SCORE TILL NOW 0.47
     img_yuv = cv2.cvtColor(img, cv2.COLOR_BGR2YCR_CB)
     clahe = cv2.createCLAHE(clipLimit=1.0, tileGridSize=(2,2))
     img_yuv[:,:,0] = clahe.apply(img_yuv[:,:,0])
@@ -139,34 +138,32 @@ def jitter_bgs(args):
     history = 250
     varThreshold = 250
     learningRate = -1
+    kernel = np.ones((3,3),np.uint8)
+    kernel2 = np.ones((5,5),np.uint8)
     
     # read all the training frames
     imgs = []
+    background_model = cv2.createBackgroundSubtractorKNN(history = history, dist2Threshold = varThreshold,detectShadows=False) 
     for img_name in train_data:
         img = cv2.imread(os.path.join(args.inp_path, img_name)) # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         imgs.append(img)
 
-    
-    background_model = cv2.createBackgroundSubtractorKNN(history = history, dist2Threshold = varThreshold,detectShadows=False) 
-    for img_name in train_data:
-        img = cv2.imread(os.path.join(args.inp_path, img_name))
         _ = background_model.apply(img,learningRate=learningRate)
 
     # check whether the path to write predictions over dev set exists or not
     if not os.path.exists(args.out_path):
         os.mkdir(args.out_path)
 
-    # hyper_params
-    kernel = np.ones((3,3),np.uint8)
-    kernel2 = np.ones((5,5),np.uint8)
-
     # predict foreground over dev frames
     for img_name in dev_data:
         img = cv2.imread(os.path.join(args.inp_path, img_name))
+        
         pred_mask = background_model.apply(img)
         pred_mask = cv2.erode(pred_mask, kernel)
         pred_mask = cv2.morphologyEx(pred_mask, cv2.MORPH_OPEN, kernel)
         pred_mask = cv2.morphologyEx(pred_mask, cv2.MORPH_CLOSE, kernel2)
+        pred_mask = cv2.medianBlur(pred_mask, 7)
+        
         pred_img_name = "gt" + img_name[2:-3] + "png"
         cv2.imwrite(os.path.join(args.out_path, pred_img_name), pred_mask)
 
