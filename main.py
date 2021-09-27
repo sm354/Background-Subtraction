@@ -97,21 +97,23 @@ def hisEqulColor(img):
 
 def illumination_bgs(args):
     train_data, dev_data = train_dev_split(args)
+    
+    # hyper params
     history = 50
     varThreshold = 300
     learningRate = -1
     kernel = np.ones((3,3),np.uint8)
     kernel2 = np.ones((5,5),np.uint8)
+
+    # read the training frames
     imgs = []
+    background_model = cv2.createBackgroundSubtractorKNN(history = history, dist2Threshold = varThreshold,detectShadows=False) 
     for img_name in train_data:
         img = cv2.imread(os.path.join(args.inp_path, img_name)) 
         imgs.append(img)
-    background_model = cv2.createBackgroundSubtractorKNN(history = history, dist2Threshold = varThreshold,detectShadows=False) 
-    for img_name in train_data:
-        img = cv2.imread(os.path.join(args.inp_path, img_name))
-        img = hisEqulColor(img)
-        _ = background_model.apply(img,learningRate=learningRate)
 
+        img = hisEqulColor(img)
+        _ = background_model.apply(img, learningRate=learningRate)
     
     if not os.path.exists(args.out_path):
         os.mkdir(args.out_path)
@@ -120,19 +122,12 @@ def illumination_bgs(args):
     for img_name in dev_data:
         img = cv2.imread(os.path.join(args.inp_path, img_name))
         img = hisEqulColor(img)
-        # img = hisEqulColor(img)
-        # gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        # blurred = cv2.GaussianBlur(gray, (3, 3), 0)
-        # img = cv2.adaptiveThreshold(blurred, 255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 249, 5)
         
         pred_mask = background_model.apply(img)
-
-        pred_mask = cv2.erode(pred_mask,kernel,iterations = 1)
-        pred_mask =  cv2.dilate(pred_mask,kernel,iterations = 1)
         pred_mask = cv2.morphologyEx(pred_mask, cv2.MORPH_OPEN, kernel)
         pred_mask = cv2.morphologyEx(pred_mask, cv2.MORPH_CLOSE, kernel2)
+        pred_mask = cv2.medianBlur(pred_mask, 7)
         
-        # pred_mask = ObtainForeground(pred_mask)
         pred_img_name = "gt" + img_name[2:-3] + "png"
         pred_mask = cv2.resize(pred_mask, (320, 240))
         cv2.imwrite(os.path.join(args.out_path, pred_img_name), pred_mask)
