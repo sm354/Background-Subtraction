@@ -7,13 +7,6 @@ import cv2
 import argparse
 import numpy as np
 
-def ShadowRemovalBaseline(img):
-    img_yuv = cv2.cvtColor(img, cv2.COLOR_BGR2YUV)
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(2,2))
-    img_yuv[:,:,0] = clahe.apply(img_yuv[:,:,0])
-    img = cv2.cvtColor(img_yuv, cv2.COLOR_YUV2BGR)
-    return img
-
 def parse_args():
     parser = argparse.ArgumentParser(description='Get mIOU of video sequences')
     parser.add_argument('-i', '--inp_path', type=str, default='input', required=True, \
@@ -40,29 +33,27 @@ def train_dev_split(args):
     # split the video sequence into train and dev set (as per eval frames given)
     train_data = filenames[0 : eval_frame_start] 
     dev_data = filenames[eval_frame_start : eval_frame_end]
-    print("train frames names:", train_data[0], train_data[-1])
-    print("eval frames names:", dev_data[0], dev_data[-1])
+    print("train frames:", train_data[0], "to", train_data[-1])
+    print("eval frames:", dev_data[0], "to", dev_data[-1])
 
     return train_data, dev_data
 
 def baseline_bgs(args):
     train_data, dev_data = train_dev_split(args)
+    
     #Hyperparams
     history = 90
     varThreshold = 250
     learningRate = -1
     kernel = np.ones((3,3),np.uint8)
     kernel2 = np.ones((5,5),np.uint8)
+    
     # read all the training frames
     imgs = []
+    background_model = cv2.createBackgroundSubtractorKNN(history = history, dist2Threshold = varThreshold,detectShadows=False) 
     for img_name in train_data:
         img = cv2.imread(os.path.join(args.inp_path, img_name)) # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         imgs.append(img)
-        
-    background_model = cv2.createBackgroundSubtractorKNN(history = history, dist2Threshold = varThreshold,detectShadows=False) 
-    for img_name in train_data:
-        img = cv2.imread(os.path.join(args.inp_path, img_name))
-        # img = ShadowRemovalBaseline(img)
         _ = background_model.apply(img,learningRate=learningRate)
 
     # check whether the path to write predictions over dev set exists or not
@@ -73,16 +64,15 @@ def baseline_bgs(args):
     for img_name in dev_data:
         img = cv2.imread(os.path.join(args.inp_path, img_name))
         # pred_mask = cv2.absdiff(background_model, img)
-        # pred_mask = cv2.cvtColor(pred_mask, cv2.COLOR_BGR2GRAY)
         # pred_mask = cv2.threshold(pred_mask, 50, 255, cv2.THRESH_BINARY)[1] # first returned value is True
-        # img = ShadowRemovalBaseline(img)
-        pred_mask1 = background_model.apply(img)
-        pred_mask2 = cv2.erode(pred_mask1,kernel,iterations = 1)
-        pred_mask3 =  cv2.dilate(pred_mask2,kernel,iterations = 1)
-        pred_mask4 = cv2.morphologyEx(pred_mask3, cv2.MORPH_OPEN, kernel)
-        pred_mask = cv2.morphologyEx(pred_mask4, cv2.MORPH_CLOSE, kernel2)
+        
+        pred_mask = background_model.apply(img)
+        # pred_mask = cv2.erode(pred_mask, kernel, iterations = 1)
+        # pred_mask =  cv2.dilate(pred_mask, kernel, iterations = 1)
+        pred_mask = cv2.morphologyEx(pred_mask, cv2.MORPH_OPEN, kernel)
+        pred_mask = cv2.morphologyEx(pred_mask, cv2.MORPH_CLOSE, kernel2)
         pred_mask = cv2.medianBlur(pred_mask, 7)
-        # pred_mask = ObtainForeground(pred_mask)
+        
         pred_img_name = "gt" + img_name[2:-3] + "png"
         cv2.imwrite(os.path.join(args.out_path, pred_img_name), pred_mask)
 
