@@ -65,7 +65,6 @@ def baseline_bgs(args):
         img = cv2.imread(os.path.join(args.inp_path, img_name))
         
         pred_mask = background_model.apply(img)
-        pred_mask[pred_mask==127] = 0
         pred_mask = cv2.morphologyEx(pred_mask, cv2.MORPH_OPEN, kernel)
         pred_mask = cv2.morphologyEx(pred_mask, cv2.MORPH_CLOSE, kernel2)
         pred_mask = cv2.medianBlur(pred_mask, 7)
