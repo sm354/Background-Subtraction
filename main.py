@@ -50,7 +50,7 @@ def baseline_bgs(args):
     
     # read all the training frames
     imgs = []
-    background_model = cv2.createBackgroundSubtractorKNN(history = history, dist2Threshold = varThreshold,detectShadows=False) 
+    background_model = cv2.createBackgroundSubtractorKNN(history = history, dist2Threshold=varThreshold, detectShadows=False)
     for img_name in train_data:
         img = cv2.imread(os.path.join(args.inp_path, img_name)) # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         imgs.append(img)
@@ -63,12 +63,9 @@ def baseline_bgs(args):
     # predict foreground over dev frames
     for img_name in dev_data:
         img = cv2.imread(os.path.join(args.inp_path, img_name))
-        # pred_mask = cv2.absdiff(background_model, img)
-        # pred_mask = cv2.threshold(pred_mask, 50, 255, cv2.THRESH_BINARY)[1] # first returned value is True
         
         pred_mask = background_model.apply(img)
-        # pred_mask = cv2.erode(pred_mask, kernel, iterations = 1)
-        # pred_mask =  cv2.dilate(pred_mask, kernel, iterations = 1)
+        pred_mask[pred_mask==127] = 0
         pred_mask = cv2.morphologyEx(pred_mask, cv2.MORPH_OPEN, kernel)
         pred_mask = cv2.morphologyEx(pred_mask, cv2.MORPH_CLOSE, kernel2)
         pred_mask = cv2.medianBlur(pred_mask, 7)
