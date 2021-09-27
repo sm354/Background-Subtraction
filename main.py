@@ -7,9 +7,6 @@ import cv2
 import argparse
 import numpy as np
 
-# import ipdb #
-import subprocess # remove this line before final submission
-
 def parse_args():
     parser = argparse.ArgumentParser(description='Get mIOU of video sequences')
     parser.add_argument('-i', '--inp_path', type=str, default='input', required=True, \
@@ -41,16 +38,6 @@ def train_dev_split(args):
 
     return train_data, dev_data
 
-def ObtainForeground(img):
-    # th, im_th = cv2.threshold(img, 220, 255, cv2.THRESH_BINARY_INV);
-    im_floodfill = img.copy()
-    h, w = img.shape[:2]
-    mask = np.zeros((h+2, w+2), np.uint8)
-    cv2.floodFill(im_floodfill, mask, (0,0), 255);
-    im_floodfill_inv = cv2.bitwise_not(im_floodfill)
-    im_out = img | im_floodfill_inv
-    return im_out
-
 def baseline_bgs(args):
     train_data, dev_data = train_dev_split(args)
 
@@ -66,11 +53,7 @@ def baseline_bgs(args):
         img = cv2.imread(os.path.join(args.inp_path, img_name)) # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         imgs.append(img)
         
-    # background_model = cv2.convertScaleAbs(background_model)
-    # background_model = cv2.createBackgroundSubtractorMOG2(history = history, varThreshold = varThreshold )
-    # background_model = cv2.createBackgroundSubtractorGMG()
     background_model = cv2.createBackgroundSubtractorKNN(history = history, dist2Threshold = varThreshold,detectShadows=False) 
-    # background_model = cv2.bgsegm.createBackgroundSubtractorGSOC()
     for img_name in train_data:
         img = cv2.imread(os.path.join(args.inp_path, img_name))
         _ = background_model.apply(img,learningRate=learningRate)
@@ -95,12 +78,6 @@ def baseline_bgs(args):
         # pred_mask = ObtainForeground(pred_mask)
         pred_img_name = "gt" + img_name[2:-3] + "png"
         cv2.imwrite(os.path.join(args.out_path, pred_img_name), pred_mask)
-
-    
-    
-    
-
-
 
 def hisEqulColor(img):
     #THIS WORKS WONDERS BEST SCORE TILL NOW 0.47
@@ -135,14 +112,10 @@ def illumination_bgs(args):
     background_model = cv2.createBackgroundSubtractorKNN(history = history, dist2Threshold = varThreshold,detectShadows=False) 
     for img_name in train_data:
         img = cv2.imread(os.path.join(args.inp_path, img_name))
-        # gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        # blurred = cv2.GaussianBlur(gray, (3, 3), 0)
-        # img = cv2.adaptiveThreshold(blurred, 255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 249, 5)
         img = hisEqulColor(img)
-        # img = hisEqulColor(img)
         _ = background_model.apply(img,learningRate=learningRate)
 
-    # check whether the path to write predictions over dev set exists or not
+    
     if not os.path.exists(args.out_path):
         os.mkdir(args.out_path)
 
@@ -167,12 +140,6 @@ def illumination_bgs(args):
         pred_mask = cv2.resize(pred_mask, (320, 240))
         cv2.imwrite(os.path.join(args.out_path, pred_img_name), pred_mask)
 
-    
-    
-    subprocess.call("python eval.py --pred_path COL780-A1-Data\\illumination\\predictions --gt_path COL780-A1-Data\\illumination\\groundtruth", shell=True)
-
-
-
 def jitter_bgs(args):
     train_data, dev_data = train_dev_split(args)
 
@@ -187,7 +154,7 @@ def jitter_bgs(args):
         img = cv2.imread(os.path.join(args.inp_path, img_name)) # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         imgs.append(img)
 
-    # background_model = cv2.createBackgroundSubtractorMOG2(history = history, varThreshold = varThreshold )
+    
     background_model = cv2.createBackgroundSubtractorKNN(history = history, dist2Threshold = varThreshold,detectShadows=False) 
     for img_name in train_data:
         img = cv2.imread(os.path.join(args.inp_path, img_name))
@@ -204,42 +171,28 @@ def jitter_bgs(args):
     # predict foreground over dev frames
     for img_name in dev_data:
         img = cv2.imread(os.path.join(args.inp_path, img_name))
-        
         pred_mask = background_model.apply(img)
         pred_mask = cv2.erode(pred_mask, kernel)
-        # pred_mask =  cv2.dilate(pred_mask,kernel,iterations = 1)
         pred_mask = cv2.morphologyEx(pred_mask, cv2.MORPH_OPEN, kernel)
         pred_mask = cv2.morphologyEx(pred_mask, cv2.MORPH_CLOSE, kernel2)
-        
-        # pred_mask = ObtainForeground(pred_mask)
         pred_img_name = "gt" + img_name[2:-3] + "png"
         cv2.imwrite(os.path.join(args.out_path, pred_img_name), pred_mask)
 
 def dynamic_bgs(args):
     train_data, dev_data = train_dev_split(args)
-
-    #Hyperparams
     history = 250
     varThreshold = 250
     learningRate = -1
-    
-    # read all the training frames
     imgs = []
     for img_name in train_data:
-        img = cv2.imread(os.path.join(args.inp_path, img_name)) # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img = cv2.imread(os.path.join(args.inp_path, img_name)) 
         imgs.append(img)
-
-    # background_model = cv2.createBackgroundSubtractorMOG2(history = history, varThreshold = varThreshold )
     background_model = cv2.createBackgroundSubtractorKNN(history = history, dist2Threshold = varThreshold,detectShadows=False) 
     for img_name in train_data:
         img = cv2.imread(os.path.join(args.inp_path, img_name))
         _ = background_model.apply(img,learningRate=learningRate)
-
-    # check whether the path to write predictions over dev set exists or not
     if not os.path.exists(args.out_path):
         os.mkdir(args.out_path)
-
-    # hyper_params
     kernel = np.ones((3,3),np.uint8)
     kernel2 = np.ones((5,5),np.uint8)
 
@@ -249,12 +202,9 @@ def dynamic_bgs(args):
         
         pred_mask = background_model.apply(img)
         pred_mask = cv2.erode(pred_mask, kernel)
-        # pred_mask = cv2.morphologyEx(pred_mask, cv2.MORPH_OPEN, kernel)
-        # pred_mask = cv2.morphologyEx(pred_mask, cv2.MORPH_CLOSE, kernel2)
         pred_mask = cv2.erode(pred_mask, kernel)
         pred_mask =  cv2.dilate(pred_mask,kernel)
         pred_mask =  cv2.dilate(pred_mask,kernel)
-        # pred_mask =  cv2.dilate(pred_mask,kernel)
 
         pred_mask = cv2.morphologyEx(pred_mask, cv2.MORPH_OPEN, kernel)
         pred_mask = cv2.morphologyEx(pred_mask, cv2.MORPH_CLOSE, kernel2)
@@ -263,11 +213,7 @@ def dynamic_bgs(args):
         pred_img_name = "gt" + img_name[2:-3] + "png"
         cv2.imwrite(os.path.join(args.out_path, pred_img_name), pred_mask)
 
-    subprocess.call("python eval.py --pred_path COL780-A1-Data\\moving_bg\\predictions --gt_path COL780-A1-Data\\moving_bg\\groundtruth", shell=True)
-
 def ptz_bgs(args):
-    #TODO: (Optional) complete this function
-
     # IMPORTANT - eval_frames.txt is not present in data but it is named as temporalROI.txt | for now I have stored a copy of it as eval_frames.txt
     train_data, dev_data = train_dev_split(args)
 
@@ -283,11 +229,7 @@ def ptz_bgs(args):
         img = cv2.imread(os.path.join(args.inp_path, img_name)) # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         imgs.append(img)
         
-    # background_model = cv2.convertScaleAbs(background_model)
-    # background_model = cv2.createBackgroundSubtractorMOG2(history = history, varThreshold = varThreshold )
-    # background_model = cv2.createBackgroundSubtractorGMG()
     background_model = cv2.createBackgroundSubtractorKNN(history = history, dist2Threshold = varThreshold,detectShadows=False) 
-    # background_model = cv2.bgsegm.createBackgroundSubtractorGSOC()
     for img_name in train_data:
         img = cv2.imread(os.path.join(args.inp_path, img_name))
         _ = background_model.apply(img,learningRate=learningRate)
@@ -299,31 +241,13 @@ def ptz_bgs(args):
     # predict foreground over dev frames
     for img_name in dev_data:
         img = cv2.imread(os.path.join(args.inp_path, img_name))
-        # pred_mask = cv2.absdiff(background_model, img)
-        # pred_mask = cv2.cvtColor(pred_mask, cv2.COLOR_BGR2GRAY)
-        # pred_mask = cv2.threshold(pred_mask, 50, 255, cv2.THRESH_BINARY)[1] # first returned value is True
-        
         pred_mask1 = background_model.apply(img)
         pred_mask2 = cv2.erode(pred_mask1,kernel,iterations = 1)
         pred_mask3 =  cv2.dilate(pred_mask2,kernel,iterations = 1)
         pred_mask4 = cv2.morphologyEx(pred_mask3, cv2.MORPH_OPEN, kernel)
         pred_mask = cv2.morphologyEx(pred_mask4, cv2.MORPH_CLOSE, kernel2)
-        
-        # pred_mask = ObtainForeground(pred_mask)
         pred_img_name = "gt" + img_name[2:-3] + "png"
         cv2.imwrite(os.path.join(args.out_path, pred_img_name), pred_mask)
-
-    log_file = open('Results.txt',"a")
-    log_info = []
-    log_info.append(f"History: {history}\n")
-    log_info.append(f"VarThreshold: {varThreshold}\n")
-    log_info.append(f"Learning Rate: {learningRate}\n")
-    log_file.writelines(log_info)
-    
-    subprocess.call("python .\\eval.py --pred_path COL780-A1-Data\\ptz\\predictions --gt_path COL780-A1-Data\\ptz\\groundtruth", shell=True)
-
-    # baseline_bgs(
-    # )
 
 def main(args):
     if args.category not in "bijmp": # error in main.py -> earlier it was bijdp
@@ -341,4 +265,3 @@ def main(args):
 if __name__ == "__main__":
     args = parse_args()
     main(args)
-
