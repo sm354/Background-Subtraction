@@ -46,9 +46,9 @@ def main(args):
 
         if type(iou) == tuple:
             # print(filename)
-            # iou = iou[0]
+            iou = iou[0]
             # pass
-            continue
+            # continue
         ious.append(iou)
 
     log_file = open('Results.txt',"a")

@@ -96,127 +96,12 @@ def baseline_bgs(args):
         pred_img_name = "gt" + img_name[2:-3] + "png"
         cv2.imwrite(os.path.join(args.out_path, pred_img_name), pred_mask)
 
-    log_file = open('Results.txt',"a")
-    log_info = []
-    log_info.append(f"History: {history}\n")
-    log_info.append(f"VarThreshold: {varThreshold}\n")
-    log_info.append(f"Learning Rate: {learningRate}\n")
-    log_file.writelines(log_info)
-    
-    subprocess.call("python .\\eval.py --pred_path COL780-A1-Data\\baseline\\predictions --gt_path COL780-A1-Data\\baseline\\groundtruth", shell=True)
-
-# def hisEqulColor(img):
-#     ycrcb=cv2.cvtColor(img,cv2.COLOR_BGR2YCR_CB)
-#     channels=cv2.split(ycrcb)
-#     # print len(channels)
-#     cv2.equalizeHist(channels[0],channels[0])
-#     cv2.merge(channels,ycrcb)
-#     cv2.cvtColor(ycrcb,cv2.COLOR_YCR_CB2BGR,img)
-#     return img
-# def hisEqulColor(img):
-#     alpha = 1.95 # Contrast control (1.0-3.0)
-#     beta = 0 # Brightness control (0-100)
-#     manual_result = cv2.convertScaleAbs(img, alpha=alpha, beta=beta)
-#     return manual_result
-def convertScale(img, alpha, beta):
-    """Add bias and gain to an image with saturation arithmetics. Unlike
-    cv2.convertScaleAbs, it does not take an absolute value, which would lead to
-    nonsensical results (e.g., a pixel at 44 with alpha = 3 and beta = -210
-    becomes 78 with OpenCV, when in fact it should become 0).
-    """
-
-    new_img = img * alpha + beta
-    new_img[new_img < 0] = 0
-    new_img[new_img > 255] = 255
-    return new_img.astype(np.uint8)
-
-# Automatic brightness and contrast optimization with optional histogram clipping
-# def hisEqulColor(image, clip_hist_percent=25):
-#     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-#     # Calculate grayscale histogram
-#     hist = cv2.calcHist([gray],[0],None,[256],[0,256])
-#     hist_size = len(hist)
-
-#     # Calculate cumulative distribution from the histogram
-#     accumulator = []
-#     accumulator.append(float(hist[0]))
-#     for index in range(1, hist_size):
-#         accumulator.append(accumulator[index -1] + float(hist[index]))
-
-#     # Locate points to clip
-#     maximum = accumulator[-1]
-#     clip_hist_percent *= (maximum/100.0)
-#     clip_hist_percent /= 2.0
-
-#     # Locate left cut
-#     minimum_gray = 0
-#     while accumulator[minimum_gray] < clip_hist_percent:
-#         minimum_gray += 1
-
-#     # Locate right cut
-#     maximum_gray = hist_size -1
-#     while accumulator[maximum_gray] >= (maximum - clip_hist_percent):
-#         maximum_gray -= 1
-
-#     # Calculate alpha and beta values
-#     alpha = 255 / (maximum_gray - minimum_gray)
-#     beta = -minimum_gray * alpha
-
-#     '''
-#     # Calculate new histogram with desired range and show histogram 
-#     new_hist = cv2.calcHist([gray],[0],None,[256],[minimum_gray,maximum_gray])
-#     plt.plot(hist)
-#     plt.plot(new_hist)
-#     plt.xlim([0,256])
-#     plt.show()
-#     '''
-
-#     auto_result = convertScale(image, alpha=alpha, beta=beta)
-#     return auto_result
-
-
-# def hisEqulColor(img):
-    
-#     b, g, r = cv2.split(img)
-#     h_b, bin_b = np.histogram(b.flatten(), 256, [0, 256])
-#     h_g, bin_g = np.histogram(g.flatten(), 256, [0, 256])
-#     h_r, bin_r = np.histogram(r.flatten(), 256, [0, 256])
-#     # calculate cdf
-#     cdf_b = np.cumsum(h_b)
-#     cdf_g = np.cumsum(h_g)
-#     cdf_r = np.cumsum(h_r)
-
-#     # mask all pixels with value=0 and replace it with mean of the pixel values
-#     cdf_m_b = np.ma.masked_equal(cdf_b, 0)
-#     cdf_m_b = (cdf_m_b - cdf_m_b.min()) * 255 / (cdf_m_b.max() - cdf_m_b.min())
-#     cdf_final_b = np.ma.filled(cdf_m_b, 0).astype('uint8')
-
-#     cdf_m_g = np.ma.masked_equal(cdf_g, 0)
-#     cdf_m_g = (cdf_m_g - cdf_m_g.min()) * 255 / (cdf_m_g.max() - cdf_m_g.min())
-#     cdf_final_g = np.ma.filled(cdf_m_g, 0).astype('uint8')
-
-
-#     cdf_m_r = np.ma.masked_equal(cdf_r, 0)
-#     cdf_m_r = (cdf_m_r - cdf_m_r.min()) * 255 / (cdf_m_r.max() - cdf_m_r.min())
-#     cdf_final_r = np.ma.filled(cdf_m_r, 0).astype('uint8')
-#     # merge the images in the three channels
-#     img_b = cdf_final_b[b]
-#     img_g = cdf_final_g[g]
-#     img_r = cdf_final_r[r]
-
-#     img_out = cv2.merge((img_b, img_g, img_r))
-#     # validation
-#     equ_b = cv2.equalizeHist(b)
-#     equ_g = cv2.equalizeHist(g)
-#     equ_r = cv2.equalizeHist(r)
-#     equ = cv2.merge((equ_b, equ_g, equ_r))
-#     # print(equ)
-#     # cv2.imwrite('output_name.png', equ)
-#     return img_out
     
     
-    return img
+    
+
+
+
 def hisEqulColor(img):
     #THIS WORKS WONDERS BEST SCORE TILL NOW 0.47
     img_yuv = cv2.cvtColor(img, cv2.COLOR_BGR2YCR_CB)
@@ -238,23 +123,16 @@ def hisEqulColor(img):
 
 def illumination_bgs(args):
     train_data, dev_data = train_dev_split(args)
-
-    #Hyperparams
     history = 50
     varThreshold = 300
     learningRate = -1
     kernel = np.ones((3,3),np.uint8)
     kernel2 = np.ones((5,5),np.uint8)
-    # read all the training frames
     imgs = []
     for img_name in train_data:
-        img = cv2.imread(os.path.join(args.inp_path, img_name)) # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        
+        img = cv2.imread(os.path.join(args.inp_path, img_name)) 
         imgs.append(img)
-        
-    # background_model = cv2.createBackgroundSubtractorMOG2(history = history, varThreshold = varThreshold ,detectShadows=False)
     background_model = cv2.createBackgroundSubtractorKNN(history = history, dist2Threshold = varThreshold,detectShadows=False) 
-    
     for img_name in train_data:
         img = cv2.imread(os.path.join(args.inp_path, img_name))
         # gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -291,7 +169,7 @@ def illumination_bgs(args):
 
     
     
-    subprocess.call("python eval.py --pred_path COL780-A1-Data\\ptz\\predictions --gt_path COL780-A1-Data\\ptz\\groundtruth", shell=True)
+    subprocess.call("python eval.py --pred_path COL780-A1-Data\\illumination\\predictions --gt_path COL780-A1-Data\\illumination\\groundtruth", shell=True)
 
 
 
