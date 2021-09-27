@@ -7,6 +7,13 @@ import cv2
 import argparse
 import numpy as np
 
+def ShadowRemovalBaseline(img):
+    img_yuv = cv2.cvtColor(img, cv2.COLOR_BGR2YUV)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(2,2))
+    img_yuv[:,:,0] = clahe.apply(img_yuv[:,:,0])
+    img = cv2.cvtColor(img_yuv, cv2.COLOR_YUV2BGR)
+    return img
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Get mIOU of video sequences')
     parser.add_argument('-i', '--inp_path', type=str, default='input', required=True, \
@@ -40,7 +47,6 @@ def train_dev_split(args):
 
 def baseline_bgs(args):
     train_data, dev_data = train_dev_split(args)
-
     #Hyperparams
     history = 90
     varThreshold = 250
@@ -56,6 +62,7 @@ def baseline_bgs(args):
     background_model = cv2.createBackgroundSubtractorKNN(history = history, dist2Threshold = varThreshold,detectShadows=False) 
     for img_name in train_data:
         img = cv2.imread(os.path.join(args.inp_path, img_name))
+        # img = ShadowRemovalBaseline(img)
         _ = background_model.apply(img,learningRate=learningRate)
 
     # check whether the path to write predictions over dev set exists or not
@@ -68,13 +75,13 @@ def baseline_bgs(args):
         # pred_mask = cv2.absdiff(background_model, img)
         # pred_mask = cv2.cvtColor(pred_mask, cv2.COLOR_BGR2GRAY)
         # pred_mask = cv2.threshold(pred_mask, 50, 255, cv2.THRESH_BINARY)[1] # first returned value is True
-        
+        # img = ShadowRemovalBaseline(img)
         pred_mask1 = background_model.apply(img)
         pred_mask2 = cv2.erode(pred_mask1,kernel,iterations = 1)
         pred_mask3 =  cv2.dilate(pred_mask2,kernel,iterations = 1)
         pred_mask4 = cv2.morphologyEx(pred_mask3, cv2.MORPH_OPEN, kernel)
         pred_mask = cv2.morphologyEx(pred_mask4, cv2.MORPH_CLOSE, kernel2)
-        
+        pred_mask = cv2.medianBlur(pred_mask, 7)
         # pred_mask = ObtainForeground(pred_mask)
         pred_img_name = "gt" + img_name[2:-3] + "png"
         cv2.imwrite(os.path.join(args.out_path, pred_img_name), pred_mask)
