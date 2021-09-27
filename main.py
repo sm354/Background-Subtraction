@@ -7,9 +7,6 @@ import cv2
 import argparse
 import numpy as np
 
-# import ipdb #
-import subprocess # remove this line before final submission
-
 def parse_args():
     parser = argparse.ArgumentParser(description='Get mIOU of video sequences')
     parser.add_argument('-i', '--inp_path', type=str, default='input', required=True, \
@@ -46,7 +43,7 @@ def ObtainForeground(img):
     im_floodfill = img.copy()
     h, w = img.shape[:2]
     mask = np.zeros((h+2, w+2), np.uint8)
-    cv2.floodFill(im_floodfill, mask, (0,0), 255);
+    cv2.floodFill(im_floodfill, mask, (0,0), 255)
     im_floodfill_inv = cv2.bitwise_not(im_floodfill)
     im_out = img | im_floodfill_inv
     return im_out
@@ -68,9 +65,7 @@ def baseline_bgs(args):
         
     # background_model = cv2.convertScaleAbs(background_model)
     # background_model = cv2.createBackgroundSubtractorMOG2(history = history, varThreshold = varThreshold )
-    # background_model = cv2.createBackgroundSubtractorGMG()
     background_model = cv2.createBackgroundSubtractorKNN(history = history, dist2Threshold = varThreshold,detectShadows=False) 
-    # background_model = cv2.bgsegm.createBackgroundSubtractorGSOC()
     for img_name in train_data:
         img = cv2.imread(os.path.join(args.inp_path, img_name))
         _ = background_model.apply(img,learningRate=learningRate)
@@ -96,28 +91,6 @@ def baseline_bgs(args):
         pred_img_name = "gt" + img_name[2:-3] + "png"
         cv2.imwrite(os.path.join(args.out_path, pred_img_name), pred_mask)
 
-    log_file = open('Results.txt',"a")
-    log_info = []
-    log_info.append(f"History: {history}\n")
-    log_info.append(f"VarThreshold: {varThreshold}\n")
-    log_info.append(f"Learning Rate: {learningRate}\n")
-    log_file.writelines(log_info)
-    
-    subprocess.call("python .\\eval.py --pred_path COL780-A1-Data\\baseline\\predictions --gt_path COL780-A1-Data\\baseline\\groundtruth", shell=True)
-
-# def hisEqulColor(img):
-#     ycrcb=cv2.cvtColor(img,cv2.COLOR_BGR2YCR_CB)
-#     channels=cv2.split(ycrcb)
-#     # print len(channels)
-#     cv2.equalizeHist(channels[0],channels[0])
-#     cv2.merge(channels,ycrcb)
-#     cv2.cvtColor(ycrcb,cv2.COLOR_YCR_CB2BGR,img)
-#     return img
-# def hisEqulColor(img):
-#     alpha = 1.95 # Contrast control (1.0-3.0)
-#     beta = 0 # Brightness control (0-100)
-#     manual_result = cv2.convertScaleAbs(img, alpha=alpha, beta=beta)
-#     return manual_result
 def convertScale(img, alpha, beta):
     """Add bias and gain to an image with saturation arithmetics. Unlike
     cv2.convertScaleAbs, it does not take an absolute value, which would lead to
@@ -289,12 +262,6 @@ def illumination_bgs(args):
         pred_mask = cv2.resize(pred_mask, (320, 240))
         cv2.imwrite(os.path.join(args.out_path, pred_img_name), pred_mask)
 
-    
-    
-    subprocess.call("python eval.py --pred_path COL780-A1-Data\\ptz\\predictions --gt_path COL780-A1-Data\\ptz\\groundtruth", shell=True)
-
-
-
 def jitter_bgs(args):
     train_data, dev_data = train_dev_split(args)
 
@@ -385,11 +352,7 @@ def dynamic_bgs(args):
         pred_img_name = "gt" + img_name[2:-3] + "png"
         cv2.imwrite(os.path.join(args.out_path, pred_img_name), pred_mask)
 
-    subprocess.call("python eval.py --pred_path COL780-A1-Data\\moving_bg\\predictions --gt_path COL780-A1-Data\\moving_bg\\groundtruth", shell=True)
-
 def ptz_bgs(args):
-    #TODO: (Optional) complete this function
-
     # IMPORTANT - eval_frames.txt is not present in data but it is named as temporalROI.txt | for now I have stored a copy of it as eval_frames.txt
     train_data, dev_data = train_dev_split(args)
 
@@ -405,11 +368,7 @@ def ptz_bgs(args):
         img = cv2.imread(os.path.join(args.inp_path, img_name)) # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         imgs.append(img)
         
-    # background_model = cv2.convertScaleAbs(background_model)
-    # background_model = cv2.createBackgroundSubtractorMOG2(history = history, varThreshold = varThreshold )
-    # background_model = cv2.createBackgroundSubtractorGMG()
     background_model = cv2.createBackgroundSubtractorKNN(history = history, dist2Threshold = varThreshold,detectShadows=False) 
-    # background_model = cv2.bgsegm.createBackgroundSubtractorGSOC()
     for img_name in train_data:
         img = cv2.imread(os.path.join(args.inp_path, img_name))
         _ = background_model.apply(img,learningRate=learningRate)
@@ -435,18 +394,6 @@ def ptz_bgs(args):
         pred_img_name = "gt" + img_name[2:-3] + "png"
         cv2.imwrite(os.path.join(args.out_path, pred_img_name), pred_mask)
 
-    log_file = open('Results.txt',"a")
-    log_info = []
-    log_info.append(f"History: {history}\n")
-    log_info.append(f"VarThreshold: {varThreshold}\n")
-    log_info.append(f"Learning Rate: {learningRate}\n")
-    log_file.writelines(log_info)
-    
-    subprocess.call("python .\\eval.py --pred_path COL780-A1-Data\\ptz\\predictions --gt_path COL780-A1-Data\\ptz\\groundtruth", shell=True)
-
-    # baseline_bgs(
-    # )
-
 def main(args):
     if args.category not in "bijmp": # error in main.py -> earlier it was bijdp
         raise ValueError("category should be one of b/i/j/m/p - Found: %s"%args.category)
@@ -463,4 +410,3 @@ def main(args):
 if __name__ == "__main__":
     args = parse_args()
     main(args)
-
