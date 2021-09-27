@@ -12,7 +12,7 @@ We build system for static, illumination, jitter, moving, and pan-tilt-zoom scen
 
 ### Moving Background
 
-![moving background](/Users/shubhammittal/Desktop/moving_bg.gif)
+![moving background](./gifs/moving_bg.gif)
 
 ## Running Mode
 
