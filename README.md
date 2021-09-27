@@ -6,13 +6,9 @@ Various background subtraction models are designed using classical computer visi
 
 We build system for static, illumination, jitter, moving, and pan-tilt-zoom scene categories. 
 
-### Static Background
-
-
-
-### Moving Background
-
 ![moving background](./gifs/moving_bg.gif)
+
+![moving_bg_gt](./gifs/moving_bg_gt.gif)
 
 ## Running Mode
 
