@@ -29,3 +29,10 @@ Generate video containing foreground using original frames and corresponding mas
 ```
 python makevideo.py --imgs_path=<path to input frames> --masks_path=<path to masks> --video_path=<path to save video> --eval_frames=<path to eval_frames.txt file> 
 ```
+
+## Authors
+
+- [Shubham Mittal](https://www.linkedin.com/in/shubham-mittal-6a8644165/)
+- [Aditi Khandelwal](https://www.linkedin.com/in/aditi-khandelwal-991b1b19b/)
+
+Course assignment in Computer Vision course ([course webpage](https://www.cse.iitd.ac.in/~chetan/teaching/col780-2020.html)) taken by [Prof. Chetan Arora](https://www.cse.iitd.ac.in/~chetan)
